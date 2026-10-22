@@ -17,18 +17,18 @@
 *{box-sizing:border-box} body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f3f4f6;color:#111827}
 header{background:#111827;color:white;padding:18px 16px calc(18px + env(safe-area-inset-top));position:sticky;top:0;z-index:5}
 h1{font-size:21px;margin:0}.sub{opacity:.7;font-size:12px;margin-top:3px}
-main{max-width:720px;margin:auto;padding:14px 12px 90px}.card{background:white;border-radius:16px;padding:15px;margin:10px 0;box-shadow:0 2px 10px #0000000b}
+main{max-width:720px;margin:auto;padding:14px 12px calc(155px + env(safe-area-inset-bottom))}.card{background:white;border-radius:16px;padding:15px;margin:10px 0;box-shadow:0 2px 10px #0000000b}#app{min-width:0}#app>*{min-width:0}input[type="date"]{display:block;width:100%;max-width:100%;min-width:0;min-height:48px;box-sizing:border-box;-webkit-appearance:auto;appearance:auto}
 h2{font-size:17px;margin:0 0 12px}.transport-title{display:flex;justify-content:space-between;align-items:center}
 label{font-size:12px;font-weight:600;color:#4b5563;display:block;margin:10px 0 5px}
 select,input{width:100%;font-size:16px;padding:12px;border:1px solid #d1d5db;border-radius:11px;background:white}
-.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}.btn{border:0;border-radius:12px;padding:13px 15px;font-size:15px;font-weight:700;cursor:pointer}
+.row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}.row>*{min-width:0}.desthead{min-width:0}.desthead select{min-width:0}.btn{border:0;border-radius:12px;padding:13px 15px;font-size:15px;font-weight:700;cursor:pointer}
 .primary{background:#111827;color:white;width:100%;margin-top:10px}.secondary{background:#e5e7eb;color:#111827}.add{background:#eef2ff;color:#3730a3;width:100%;margin-top:10px}
 .danger{background:#fee2e2;color:#991b1b}.small{font-size:12px}.dest{border-top:1px solid #eee;padding-top:10px;margin-top:10px}.desthead{display:flex;gap:8px;align-items:center}.desthead select{flex:1}.desthead button{flex:0 0 auto}
 nav{position:fixed;bottom:0;left:0;right:0;background:white;border-top:1px solid #ddd;padding:9px max(10px,env(safe-area-inset-left)) calc(9px + env(safe-area-inset-bottom));display:flex;gap:7px;z-index:10}
 nav button{flex:1;padding:10px 5px;border:0;background:white;border-radius:10px;font-size:12px}nav button.active{background:#111827;color:white}
 pre{white-space:pre-wrap;background:#f9fafb;border-radius:12px;padding:14px;font-size:15px;line-height:1.45;border:1px solid #e5e7eb}
 .item{padding:12px 0;border-bottom:1px solid #eee}.item:last-child{border-bottom:0}.muted{color:#6b7280}
-.modal{position:fixed;inset:0;background:#0008;z-index:20;display:none;align-items:flex-end}.modal.show{display:flex}.sheet{background:white;width:100%;max-height:90vh;overflow:auto;border-radius:20px 20px 0 0;padding:18px}.sheet-head{display:flex;justify-content:space-between;align-items:center;gap:12px;position:sticky;top:-18px;margin:-18px -18px 12px;padding:14px 18px;background:white;border-bottom:1px solid #e5e7eb;z-index:2}.sheet-head h2{margin:0}.back-btn{padding:8px 11px;font-size:13px;white-space:nowrap}
+.modal{position:fixed;inset:0;background:#0008;z-index:20;display:none;align-items:flex-end;overscroll-behavior:contain}.modal.show{display:flex}.sheet{background:white;width:100%;max-height:90vh;max-height:90dvh;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y;border-radius:20px 20px 0 0;padding:18px;min-height:0;contain:layout paint}.sheet-head{display:flex;justify-content:space-between;align-items:center;gap:12px;position:sticky;top:-18px;margin:-18px -18px 12px;padding:14px 18px;background:white;border-bottom:1px solid #e5e7eb;z-index:2}.sheet-head h2{margin:0}.back-btn{padding:8px 11px;font-size:13px;white-space:nowrap}body.modal-open{overflow:hidden}
 .toast{position:fixed;bottom:75px;left:50%;transform:translateX(-50%);background:#111827;color:white;padding:10px 14px;border-radius:10px;display:none;z-index:30;max-width:calc(100% - 24px);width:max-content;text-align:center;line-height:1.35;white-space:normal}
 </style>
 </head>
@@ -194,14 +194,17 @@ function renderSettings(){
  <p class="muted small">Datele raman stocate pe acest dispozitiv. Backup-ul nu sincronizeaza automat alte telefoane.</p></div>`;
 }
 function editList(k,n){
+ const sheet=document.getElementById('modalSheet');const oldTop=sheet.scrollTop;
  const rows=lists[k].map((v,i)=>`<div class="item"><input id="li-${i}" value="${esc(v)}"><button class="btn danger" style="margin-top:6px" onclick="delItem('${k}',${i})">Sterge</button></div>`).join('');
- document.getElementById('modalSheet').innerHTML=`<div class="sheet-head"><h2>${n}</h2><button class="btn secondary back-btn" onclick="closeModal()">Inapoi</button></div>${rows}<button class="btn add" onclick="addItem('${k}')">+ Adauga</button><button class="btn primary" onclick="saveList('${k}')">Salveaza</button>`;
- document.getElementById('modal').classList.add('show');
+ sheet.innerHTML=`<div class="sheet-head"><h2>${n}</h2><button class="btn secondary back-btn" onclick="closeModal()">Inapoi</button></div>${rows}<button class="btn add" onclick="addItem('${k}')">+ Adauga</button><button class="btn primary" onclick="saveList('${k}')">Salveaza</button>`;
+ sheet.scrollTop=oldTop;
+ const modal=document.getElementById('modal');
+ if(!modal.classList.contains('show')){window._mayerScrollY=window.scrollY||window.pageYOffset||0;document.body.style.position='fixed';document.body.style.top=`-${window._mayerScrollY}px`;document.body.style.width='100%';document.body.classList.add('modal-open');modal.classList.add('show');}
 }
 function saveList(k){let arr=[];for(let i=0;i<lists[k].length;i++){let v=document.getElementById('li-'+i).value.trim();if(v&&!arr.includes(v))arr.push(v)}const previous=lists[k];lists[k]=arr;if(!save()){lists[k]=previous;return}closeModal();renderSettings();toast('Lista salvata')}
 function addItem(k){lists[k].push('');editList(k,document.querySelector('#modalSheet h2').textContent)}
 function delItem(k,i){lists[k].splice(i,1);editList(k,document.querySelector('#modalSheet h2').textContent)}
-function closeModal(){document.getElementById('modal').classList.remove('show')}
+function closeModal(){const modal=document.getElementById('modal');if(!modal.classList.contains('show'))return;modal.classList.remove('show');document.body.classList.remove('modal-open');document.body.style.position='';document.body.style.top='';document.body.style.width='';window.scrollTo(0,window._mayerScrollY||0);}
 function exportBackup(){
  const payload={format:'ProgramTransportBackup',version:1,exportedAt:new Date().toISOString(),lists,programs};
  const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
