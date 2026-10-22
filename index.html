@@ -28,12 +28,12 @@ nav{position:fixed;bottom:0;left:0;right:0;background:white;border-top:1px solid
 nav button{flex:1;padding:10px 5px;border:0;background:white;border-radius:10px;font-size:12px}nav button.active{background:#111827;color:white}
 pre{white-space:pre-wrap;background:#f9fafb;border-radius:12px;padding:14px;font-size:15px;line-height:1.45;border:1px solid #e5e7eb}
 .item{padding:12px 0;border-bottom:1px solid #eee}.item:last-child{border-bottom:0}.muted{color:#6b7280}
-.modal{position:fixed;inset:0;background:#0008;z-index:20;display:none;align-items:flex-end}.modal.show{display:flex}.sheet{background:white;width:100%;max-height:90vh;overflow:auto;border-radius:20px 20px 0 0;padding:18px}
+.modal{position:fixed;inset:0;background:#0008;z-index:20;display:none;align-items:flex-end}.modal.show{display:flex}.sheet{background:white;width:100%;max-height:90vh;overflow:auto;border-radius:20px 20px 0 0;padding:18px}.sheet-head{display:flex;justify-content:space-between;align-items:center;gap:12px;position:sticky;top:-18px;margin:-18px -18px 12px;padding:14px 18px;background:white;border-bottom:1px solid #e5e7eb;z-index:2}.sheet-head h2{margin:0}.back-btn{padding:8px 11px;font-size:13px;white-space:nowrap}
 .toast{position:fixed;bottom:75px;left:50%;transform:translateX(-50%);background:#111827;color:white;padding:10px 14px;border-radius:10px;display:none;z-index:30;max-width:calc(100% - 24px);width:max-content;text-align:center;line-height:1.35;white-space:normal}
 </style>
 </head>
 <body>
-<header><h1>Mayer Distribution</h1><div class="sub">Programare transporturi · iOS + Android</div></header>
+<header><h1>Mayer Distribution</h1><div class="sub">Program Transport by Mihai R. ©</div></header>
 <main id="app"></main>
 <nav>
 <button onclick="show('new')" id="n-new">Program nou</button>
@@ -180,8 +180,9 @@ function renderToday(){
 }
 function shareWhatsApp(enc){window.location.href='https://wa.me/?text='+enc}
 function renderHistory(){
- document.getElementById('app').innerHTML=`<div class="card"><h2>Istoric</h2>${programs.length?programs.map((p,i)=>`<div class="item"><b>${fmtDate(p.date)}</b><div class="muted">${p.transports.length} transport${p.transports.length===1?'':'uri'}</div><button class="btn secondary" style="margin-top:7px" onclick="viewProgram(${i})">Vezi programul</button></div>`).join(''):'<div class="muted">Nu exista programe salvate.</div>'}</div>`;
+ document.getElementById('app').innerHTML=`<div class="card"><h2>Istoric</h2>${programs.length?programs.map((p,i)=>`<div class="item"><b>${fmtDate(p.date)}</b><div class="muted">${p.transports.length} transport${p.transports.length===1?'':'uri'}</div><div class="row" style="margin-top:7px"><button class="btn secondary" onclick="viewProgram(${i})">Vezi programul</button><button class="btn danger" onclick="deleteProgram(${i})">Sterge</button></div></div>`).join(''):'<div class="muted">Nu exista programe salvate.</div>'}</div>`;
 }
+function deleteProgram(i){if(i<0||i>=programs.length)return;const p=programs[i];if(!confirm(`Stergi programul din ${fmtDate(p.date)}? Aceasta actiune nu poate fi anulata.`))return;programs.splice(i,1);if(!save()){programs.splice(i,0,p);return}renderHistory();toast('Program sters')}
 function viewProgram(i){let p=programs[i];document.getElementById('app').innerHTML=`<div class="card"><h2>${fmtDate(p.date)}</h2><pre>${esc(buildMessage(p))}</pre><button class="btn primary" onclick="shareWhatsApp('${encodeURIComponent(buildMessage(p))}')">Trimite din nou pe WhatsApp</button><button class="btn secondary" style="margin-top:8px" onclick="show('history')">Inapoi</button></div>`}
 function renderSettings(){
  const groups=[['Driver','Soferi'],['Auto','Auto'],['Remorca','Remorci'],['Destination','Destinatii'],['Transit','Transit'],['Ridicare','Ridicare']];
@@ -194,7 +195,7 @@ function renderSettings(){
 }
 function editList(k,n){
  const rows=lists[k].map((v,i)=>`<div class="item"><input id="li-${i}" value="${esc(v)}"><button class="btn danger" style="margin-top:6px" onclick="delItem('${k}',${i})">Sterge</button></div>`).join('');
- document.getElementById('modalSheet').innerHTML=`<h2>${n}</h2>${rows}<button class="btn add" onclick="addItem('${k}')">+ Adauga</button><button class="btn primary" onclick="saveList('${k}')">Salveaza</button><button class="btn secondary" style="margin-top:8px" onclick="closeModal()">Inchide</button>`;
+ document.getElementById('modalSheet').innerHTML=`<div class="sheet-head"><h2>${n}</h2><button class="btn secondary back-btn" onclick="closeModal()">Inapoi</button></div>${rows}<button class="btn add" onclick="addItem('${k}')">+ Adauga</button><button class="btn primary" onclick="saveList('${k}')">Salveaza</button>`;
  document.getElementById('modal').classList.add('show');
 }
 function saveList(k){let arr=[];for(let i=0;i<lists[k].length;i++){let v=document.getElementById('li-'+i).value.trim();if(v&&!arr.includes(v))arr.push(v)}const previous=lists[k];lists[k]=arr;if(!save()){lists[k]=previous;return}closeModal();renderSettings();toast('Lista salvata')}
