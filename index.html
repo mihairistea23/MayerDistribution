@@ -33,7 +33,7 @@ pre{white-space:pre-wrap;background:#f9fafb;border-radius:12px;padding:14px;font
 </style>
 </head>
 <body>
-<header><h1>Mayer Distribution</h1><div class="sub">Program Transport by Mihai R. ©</div></header>
+<header><h1>Mayer Distribution</h1><div class="sub">Program Transport by Mihai R. © <span id="appVersion">v1.5</span></div></header>
 <main id="app"></main>
 <nav>
 <button onclick="show('new')" id="n-new">Program nou</button>
@@ -43,7 +43,10 @@ pre{white-space:pre-wrap;background:#f9fafb;border-radius:12px;padding:14px;font
 </nav>
 <div id="modal" class="modal"><div class="sheet" id="modalSheet"></div></div>
 <div id="toast" class="toast"></div>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 <script>
+const APP_VERSION = "v1.5";
+document.getElementById("appVersion").textContent = APP_VERSION;
 const initialData = {
   "Driver": [],
   "Ridicare": [],
@@ -100,7 +103,7 @@ function opts(arr, selected='', placeholder='Selecteaza...'){
 }
 function today(){let d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
 function fmtDate(v){if(!v)return '';let [y,m,d]=v.split('-');return `${d}/${m}/${y}`}
-function blankTransport(){return {driver:'',auto:'',remorca:'',ridicare:'',transit:'',destinations:[{destination:'',paleti:''}]}}
+function blankTransport(){return {driver:'',auto:'',remorca:'',ridicare:'',transit:'',transitPaleti:'',destinations:[{destination:'',paleti:''}]}}
 function show(page){
  document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
  document.getElementById('n-'+page)?.classList.add('active');
@@ -122,7 +125,7 @@ function renderTransports(){
  <div class="row"><div><label>Auto</label><select onchange="current.transports[${i}].auto=this.value">${opts(lists.Auto,t.auto,'Fara auto')}</select></div>
  <div><label>Remorca</label><select onchange="current.transports[${i}].remorca=this.value">${opts(lists.Remorca,t.remorca,'Fara remorca')}</select></div></div>
  <div class="row"><div><label>Ridicare (optional)</label><select onchange="current.transports[${i}].ridicare=this.value">${opts(lists.Ridicare,t.ridicare)}</select></div>
- <div><label>Transit (optional)</label><select onchange="current.transports[${i}].transit=this.value">${opts(lists.Transit,t.transit)}</select></div></div>
+ <div><label>Transit (optional)</label><select onchange="current.transports[${i}].transit=this.value">${opts(lists.Transit,t.transit)}</select><label>Paleti Transit (optional)</label><select onchange="current.transports[${i}].transitPaleti=this.value">${opts(lists.Paleti,t.transitPaleti||'','Paleti')}</select></div></div>
  <label>Destinatii *</label>${t.destinations.map((d,j)=>`<div class="dest"><div class="desthead">
  <select onchange="current.transports[${i}].destinations[${j}].destination=this.value">${opts(lists.Destination,d.destination,'Selecteaza destinatie...')}</select>
  <select style="max-width:100px" onchange="current.transports[${i}].destinations[${j}].paleti=this.value">${opts(lists.Paleti,d.paleti,'Paleti')}</select>
@@ -140,7 +143,7 @@ function buildMessage(p){
    let line=t.driver+'\n';
    if(t.auto||t.remorca) line+=(t.auto||'')+(t.remorca?' '+t.remorca:'')+'\n';
    if(t.ridicare) line+='Ridicare: '+t.ridicare+'\n';
-   if(t.transit) line+='Transit: '+t.transit+'\n';
+   if(t.transit) line+='Transit: '+t.transit+(t.transitPaleti?' ['+t.transitPaleti+']':'')+'\n';
    line+=t.destinations.filter(d=>d.destination&&d.paleti).map(d=>`${d.destination} [${d.paleti}]`).join('\n');
    return line;
  }).join('\n\n');
@@ -183,7 +186,22 @@ function renderHistory(){
  document.getElementById('app').innerHTML=`<div class="card"><h2>Istoric</h2>${programs.length?programs.map((p,i)=>`<div class="item"><b>${fmtDate(p.date)}</b><div class="muted">${p.transports.length} transport${p.transports.length===1?'':'uri'}</div><div class="row" style="margin-top:7px"><button class="btn secondary" onclick="viewProgram(${i})">Vezi programul</button><button class="btn danger" onclick="deleteProgram(${i})">Sterge</button></div></div>`).join(''):'<div class="muted">Nu exista programe salvate.</div>'}</div>`;
 }
 function deleteProgram(i){if(i<0||i>=programs.length)return;const p=programs[i];if(!confirm(`Stergi programul din ${fmtDate(p.date)}? Aceasta actiune nu poate fi anulata.`))return;programs.splice(i,1);if(!save()){programs.splice(i,0,p);return}renderHistory();toast('Program sters')}
-function viewProgram(i){let p=programs[i];document.getElementById('app').innerHTML=`<div class="card"><h2>${fmtDate(p.date)}</h2><pre>${esc(buildMessage(p))}</pre><button class="btn primary" onclick="shareWhatsApp('${encodeURIComponent(buildMessage(p))}')">Trimite din nou pe WhatsApp</button><button class="btn secondary" style="margin-top:8px" onclick="show('history')">Inapoi</button></div>`}
+function exportProgramExcel(i){
+ const p=programs[i];if(!p)return;
+ if(!window.XLSX){toast('Biblioteca Excel nu s-a incarcat. Verifica conexiunea la internet si reincarca aplicatia.');return;}
+ const headers=['Data programului','Transport','Sofer','Auto','Remorca','Ridicare','Transit','Paleti Transit','Destinatie','Paleti destinatie'];
+ const rows=[headers];
+ p.transports.forEach((t,ti)=>{
+   const destinations=Array.isArray(t.destinations)&&t.destinations.length?t.destinations:[{destination:'',paleti:''}];
+   destinations.forEach(d=>rows.push([p.date||'',`Transport ${ti+1}`,t.driver||'',t.auto||'',t.remorca||'',t.ridicare||'',t.transit||'',t.transitPaleti||'',d.destination||'',d.paleti||'']));
+ });
+ const ws=XLSX.utils.aoa_to_sheet(rows);
+ ws['!cols']=[{wch:16},{wch:14},{wch:28},{wch:16},{wch:16},{wch:20},{wch:24},{wch:16},{wch:28},{wch:16}];
+ const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Program transport');
+ XLSX.writeFile(wb,`MayerDistribution-program-${p.date||today()}.xlsx`);
+ toast('Fisierul Excel a fost generat.');
+}
+function viewProgram(i){let p=programs[i];document.getElementById('app').innerHTML=`<div class="card"><h2>${fmtDate(p.date)}</h2><pre>${esc(buildMessage(p))}</pre><button class="btn secondary" style="width:100%;margin-top:8px" onclick="exportProgramExcel(${i})">Exporta Excel</button><button class="btn primary" onclick="shareWhatsApp('${encodeURIComponent(buildMessage(p))}')">Trimite din nou pe WhatsApp</button><button class="btn secondary" style="margin-top:8px" onclick="show('history')">Inapoi</button></div>`}
 function renderSettings(){
  const groups=[['Driver','Soferi'],['Auto','Auto'],['Remorca','Remorci'],['Destination','Destinatii'],['Transit','Transit'],['Ridicare','Ridicare']];
  document.getElementById('app').innerHTML=`<div class="card"><h2>Setari / Nomenclatoare</h2>${groups.map(([k,n])=>`<div class="item"><b>${n}</b><div class="muted">${lists[k].length} valori</div><button class="btn secondary" style="margin-top:7px" onclick="editList('${k}','${n}')">Administreaza</button></div>`).join('')}</div>
