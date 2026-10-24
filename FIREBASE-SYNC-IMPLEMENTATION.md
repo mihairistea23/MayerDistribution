@@ -32,4 +32,6 @@ The service intentionally does not perform automatic writes or merge local/cloud
 
 ## Current status
 
-This is an implementation layer, not a completed end-to-end integration. The current app remains local-only until the UI integration is separately implemented and tested. No Firebase rules are deployed by this repository commit.
+The branch now includes a guarded setup panel in the Settings screen. It allows a user to enter the Firebase Web configuration (stored only in that browser), sign in, inspect cloud counts, and explicitly import the current local snapshot only when the cloud account is empty.
+
+The panel does NOT automatically write local changes to Firestore and does NOT apply cloud snapshots to localStorage. This is intentional: bidirectional sync is not enabled until deletion propagation, conflict resolution, offline/reconnect, and restore-backup behavior have been implemented and tested. The app's existing local workflows remain the source of truth at this stage. No Firebase rules are deployed by this repository commit.
