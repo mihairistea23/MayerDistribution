@@ -33,7 +33,7 @@ pre{white-space:pre-wrap;background:#f9fafb;border-radius:12px;padding:14px;font
 </style>
 </head>
 <body>
-<header><h1>Mayer Distribution</h1><div class="sub">Program Transport by Mihai R. © <span id="appVersion">v1.5</span></div></header>
+<header><h1>Mayer Distribution</h1><div class="sub">Program Transport by Mihai R. © <span id="appVersion">v1.6</span></div></header>
 <main id="app"></main>
 <nav>
 <button onclick="show('new')" id="n-new">Program nou</button>
@@ -45,7 +45,7 @@ pre{white-space:pre-wrap;background:#f9fafb;border-radius:12px;padding:14px;font
 <div id="toast" class="toast"></div>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 <script>
-const APP_VERSION = "v1.5";
+const APP_VERSION = "v1.6";
 document.getElementById("appVersion").textContent = APP_VERSION;
 const initialData = {
   "Driver": [],
@@ -144,7 +144,7 @@ function buildMessage(p){
    if(t.auto||t.remorca) line+=(t.auto||'')+(t.remorca?' '+t.remorca:'')+'\n';
    if(t.ridicare) line+='Ridicare: '+t.ridicare+'\n';
    if(t.transit) line+='Transit: '+t.transit+(t.transitPaleti?' ['+t.transitPaleti+']':'')+'\n';
-   line+=t.destinations.filter(d=>d.destination&&d.paleti).map(d=>`${d.destination} [${d.paleti}]`).join('\n');
+   line+=t.destinations.filter(d=>d.destination).map(d=>d.destination+(d.paleti?` [${d.paleti}]`:'' )).join('\n');
    return line;
  }).join('\n\n');
  return out.trim();
@@ -156,7 +156,6 @@ function validationError(p){
    const t=p.transports[i];
    if(!t.driver) return `Selecteaza soferul pentru Transport ${i+1}.`;
    if(!t.destinations.some(d=>d.destination)) return `Selecteaza cel putin o destinatie pentru Transport ${i+1}.`;
-   if(!t.destinations.some(d=>d.destination&&d.paleti)) return `Selecteaza numarul de paleti pentru cel putin o destinatie la Transport ${i+1}.`;
  }
  return '';
 }
@@ -183,7 +182,7 @@ function renderToday(){
 }
 function shareWhatsApp(enc){window.location.href='https://wa.me/?text='+enc}
 function renderHistory(){
- document.getElementById('app').innerHTML=`<div class="card"><h2>Istoric</h2>${programs.length?programs.map((p,i)=>`<div class="item"><b>${fmtDate(p.date)}</b><div class="muted">${p.transports.length} transport${p.transports.length===1?'':'uri'}</div><div class="row" style="margin-top:7px"><button class="btn secondary" onclick="viewProgram(${i})">Vezi programul</button><button class="btn danger" onclick="deleteProgram(${i})">Sterge</button></div></div>`).join(''):'<div class="muted">Nu exista programe salvate.</div>'}</div>`;
+  document.getElementById('app').innerHTML=`<div class="card"><h2>Istoric</h2>${programs.length?`<button class="btn secondary" style="width:100%;margin-bottom:10px" onclick="exportHistoryExcel()">Exporta tot istoricul in Excel</button>`+programs.map((p,i)=>`<div class="item"><b>${fmtDate(p.date)}</b><div class="muted">${p.transports.length} transport${p.transports.length===1?'':'uri'}</div><div class="row" style="margin-top:7px"><button class="btn secondary" onclick="viewProgram(${i})">Vezi programul</button><button class="btn danger" onclick="deleteProgram(${i})">Sterge</button></div></div>`).join(''):'<div class="muted">Nu exista programe salvate.</div>'}</div>`;
 }
 function deleteProgram(i){if(i<0||i>=programs.length)return;const p=programs[i];if(!confirm(`Stergi programul din ${fmtDate(p.date)}? Aceasta actiune nu poate fi anulata.`))return;programs.splice(i,1);if(!save()){programs.splice(i,0,p);return}renderHistory();toast('Program sters')}
 function exportProgramExcel(i){
@@ -200,6 +199,24 @@ function exportProgramExcel(i){
  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Program transport');
  XLSX.writeFile(wb,`MayerDistribution-program-${p.date||today()}.xlsx`);
  toast('Fisierul Excel a fost generat.');
+}
+function exportHistoryExcel(){
+  if(!programs.length){toast('Nu exista programe in istoric.');return;}
+  if(!window.XLSX){toast('Biblioteca Excel nu s-a incarcat. Verifica conexiunea la internet si reincarca aplicatia.');return;}
+  const headers=['Data programului','Transport','Sofer','Auto','Remorca','Ridicare','Transit','Paleti Transit','Destinatie','Paleti destinatie'];
+  const rows=[headers];
+  programs.forEach(p=>{
+    (Array.isArray(p.transports)?p.transports:[]).forEach((t,ti)=>{
+      const destinations=Array.isArray(t.destinations)&&t.destinations.length?t.destinations:[{destination:'',paleti:''}];
+      destinations.forEach(d=>rows.push([p.date||'',`Transport ${ti+1}`,t.driver||'',t.auto||'',t.remorca||'',t.ridicare||'',t.transit||'',t.transitPaleti||'',d.destination||'',d.paleti||'']));
+    });
+  });
+  if(rows.length===1){toast('Nu exista transporturi de exportat.');return;}
+  const ws=XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols']=[{wch:16},{wch:14},{wch:28},{wch:16},{wch:16},{wch:20},{wch:24},{wch:16},{wch:28},{wch:16}];
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Istoric transport');
+  XLSX.writeFile(wb,`MayerDistribution-istoric-${today()}.xlsx`);
+  toast('Exportul complet al istoricului a fost generat.');
 }
 function viewProgram(i){let p=programs[i];document.getElementById('app').innerHTML=`<div class="card"><h2>${fmtDate(p.date)}</h2><pre>${esc(buildMessage(p))}</pre><button class="btn secondary" style="width:100%;margin-top:8px" onclick="exportProgramExcel(${i})">Exporta Excel</button><button class="btn primary" onclick="shareWhatsApp('${encodeURIComponent(buildMessage(p))}')">Trimite din nou pe WhatsApp</button><button class="btn secondary" style="margin-top:8px" onclick="show('history')">Inapoi</button></div>`}
 function renderSettings(){
