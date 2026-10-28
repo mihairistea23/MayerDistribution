@@ -16,7 +16,16 @@
 <style>
 *{box-sizing:border-box} body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f3f4f6;color:#111827}
 header{background:#111827;color:white;padding:18px 16px calc(18px + env(safe-area-inset-top));position:sticky;top:0;z-index:5}
+.header-inner{display:flex;align-items:center;justify-content:space-between;gap:12px;max-width:720px;margin:0 auto}
+.header-copy{min-width:0}
 h1{font-size:21px;margin:0}.sub{opacity:.7;font-size:12px;margin-top:3px}
+.refresh-btn{flex:0 0 44px;width:44px;height:44px;display:inline-flex;align-items:center;justify-content:center;border:1px solid #ffffff35;border-radius:12px;background:transparent;color:#fff;padding:0;cursor:pointer;touch-action:manipulation}
+.refresh-btn:focus-visible{outline:2px solid #fff;outline-offset:3px}
+.refresh-btn:disabled{opacity:.7;cursor:wait}
+.refresh-btn svg{width:23px;height:23px;display:block}
+.refresh-btn.refreshing svg{animation:refresh-spin .8s linear infinite}
+@keyframes refresh-spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.refresh-btn.refreshing svg{animation:none}}
 main{max-width:720px;margin:auto;padding:14px 12px calc(155px + env(safe-area-inset-bottom))}.card{background:white;border-radius:16px;padding:15px;margin:10px 0;box-shadow:0 2px 10px #0000000b}#app{min-width:0}#app>*{min-width:0}input[type="date"]{display:block;width:100%;max-width:100%;min-width:0;min-height:48px;box-sizing:border-box;-webkit-appearance:auto;appearance:auto}
 h2{font-size:17px;margin:0 0 12px}.transport-title{display:flex;justify-content:space-between;align-items:center}
 label{font-size:12px;font-weight:600;color:#4b5563;display:block;margin:10px 0 5px}
@@ -33,7 +42,7 @@ pre{white-space:pre-wrap;background:#f9fafb;border-radius:12px;padding:14px;font
 </style>
 </head>
 <body>
-<header><h1>MayerCargo SRL</h1><div class="sub">Management Transport by Mihai R. | <span id="appVersion">v1.6</span></div></header>
+<header><div class="header-inner"><div class="header-copy"><h1>MayerCargo SRL</h1><div class="sub">Management Transport by Mihai R. | <span id="appVersion">v1.6</span></div></div><button type="button" id="refreshAppBtn" class="refresh-btn" aria-label="Verifica actualizarile si reincarca aplicatia" title="Verifica actualizarile si reincarca aplicatia" onclick="refreshApplication()"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 7v5h-5M4.5 10a7.5 7.5 0 0 1 12.8-4.9L20 7M4 17v-5h5m10.5 2a7.5 7.5 0 0 1-12.8 4.9L4 17" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div></header>
 <main id="app"></main>
 <nav>
 <button onclick="show('new')" id="n-new">Program nou</button>
@@ -79,6 +88,8 @@ let lists=normalizeLists(storedLists);
 let programs=readStored('pt_programs',[]);
 if(!Array.isArray(programs)) programs=[];
 let current = null;
+let currentBaseline = null;
+let savedListsSnapshot = JSON.stringify(lists);
 
 const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 function save(){
@@ -87,6 +98,7 @@ function save(){
    oldLists=localStorage.getItem('pt_lists'); oldPrograms=localStorage.getItem('pt_programs');
    localStorage.setItem('pt_lists',JSON.stringify(lists));
    localStorage.setItem('pt_programs',JSON.stringify(programs));
+   savedListsSnapshot=JSON.stringify(lists);
    return true;
  } catch(err) {
    // Incearca sa revina la valorile existente daca stocarea nu a reusit.
@@ -110,7 +122,7 @@ function show(page){
  if(page==='new') renderNew(); if(page==='today') renderToday(); if(page==='history') renderHistory(); if(page==='settings') renderSettings();
 }
 function renderNew(){
- if(!current) current={date:today(), transports:[blankTransport()]};
+ if(!current){current={date:today(), transports:[blankTransport()]};currentBaseline=JSON.stringify(current);}
  document.getElementById('app').innerHTML=`<div class="card"><h2>Program nou</h2>
  <label>Data</label><input type="date" value="${current.date}" onchange="current.date=this.value">
  </div><div id="transports"></div>
@@ -171,7 +183,7 @@ function preview(){
 function saveAndWhatsApp(){
  const p=JSON.parse(JSON.stringify(current)); p.id=Date.now(); programs.unshift(p);
  if(!save()){programs.shift();return}
- const msg=buildMessage(p); current=null;
+ const msg=buildMessage(p); current=null; currentBaseline=null;
  const url='https://wa.me/?text='+encodeURIComponent(msg);
  window.location.href=url;
 }
@@ -287,6 +299,57 @@ async function importBackup(input){
    if(!save()){lists=previousLists;programs=previousPrograms;return}
    current=null;renderSettings();toast('Backup restaurat cu succes');
  }catch(err){console.error(err);toast(err.message||'Fisierul de backup nu a putut fi citit.')}finally{input.value=''}
+}
+function hasUnsavedChanges(){
+ const programChanged=current!==null&&(!currentBaseline||JSON.stringify(current)!==currentBaseline);
+ const listsChanged=JSON.stringify(lists)!==savedListsSnapshot;
+ let openEditorChanged=false;
+ const modal=document.getElementById('modal');
+ if(modal&&modal.classList.contains('show')){
+   const heading=document.querySelector('#modalSheet .sheet-head h2')?.textContent;
+   const groupMap={'Soferi':'Driver','Auto':'Auto','Remorci':'Remorca','Destinatii':'Destination','Transit':'Transit','Ridicare':'Ridicare'};
+   const key=groupMap[heading];
+   if(key){
+     const inputs=[...document.querySelectorAll('#modalSheet input[id^="li-"]')];
+     const inputValues=inputs.map(input=>String(input.value));
+     const listValues=lists[key].map(value=>String(value??''));
+     openEditorChanged=JSON.stringify(inputValues)!==JSON.stringify(listValues);
+   }
+ }
+ return programChanged||listsChanged||openEditorChanged;
+}
+function waitForWorker(worker,timeoutMs=10000){
+ return new Promise(resolve=>{
+   if(!worker||worker.state==='activated'||worker.state==='redundant'){resolve(worker?.state==='activated');return;}
+   let finished=false;
+   const finish=ok=>{if(finished)return;finished=true;clearTimeout(timer);worker.removeEventListener('statechange',onState);resolve(ok);};
+   const onState=()=>{if(worker.state==='activated')finish(true);else if(worker.state==='redundant')finish(false);};
+   const timer=setTimeout(()=>finish(false),timeoutMs);
+   worker.addEventListener('statechange',onState);
+ });
+}
+async function refreshApplication(){
+ const button=document.getElementById('refreshAppBtn');
+ if(!button||button.disabled)return;
+ if(hasUnsavedChanges()&&!confirm('Exista modificari nesalvate. Daca reincarci aplicatia, acestea se pot pierde. Continui?'))return;
+ button.disabled=true;button.classList.add('refreshing');button.setAttribute('aria-busy','true');
+ try{
+   if('serviceWorker' in navigator&&window.isSecureContext&&location.protocol!=='file:'){
+     try{
+       const registration=await navigator.serviceWorker.getRegistration();
+       if(registration){
+         await registration.update();
+         const worker=registration.installing||registration.waiting;
+         if(worker)await waitForWorker(worker);
+       }
+     }catch(err){console.warn('Nu s-a putut verifica actualizarea aplicatiei; se va reincarca pagina.',err);}
+   }
+   window.location.reload();
+ }catch(err){
+   console.error('Reincarcarea aplicatiei a esuat:',err);
+   button.disabled=false;button.classList.remove('refreshing');button.removeAttribute('aria-busy');
+   toast('Nu s-a putut reincarca aplicatia. Incearca din nou.');
+ }
 }
 // PWA necesita HTTPS sau localhost. Nu incercam sa inregistram service worker din file://.
 if(location.protocol!=='file:'){
