@@ -261,7 +261,7 @@ function showShareDebug(lines){
  const panel=document.getElementById('shareDebugPanel');
  const output=document.getElementById('shareDebugOutput');
  if(!panel||!output){console.warn('Panoul de diagnostic partajare nu este disponibil.',lines);return;}
- output.textContent=lines.join('\\n');
+ output.textContent=lines.join('\n');
  panel.style.display='block';
 }
 async function copyShareDebug(){
