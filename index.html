@@ -226,6 +226,11 @@ function renderSettings(){
  <button class="btn secondary" style="width:100%;margin-top:6px" onclick="exportBackup()">Descarca backup</button>
  <button class="btn secondary" style="width:100%;margin-top:8px" onclick="shareBackup()">Partajare</button>
  <button class="btn secondary" style="width:100%;margin-top:8px" onclick="document.getElementById('backupFile').click()">Restaureaza din backup</button>
+ <div id="shareDebugPanel" class="item" style="display:none;margin-top:12px;border:1px solid #d1d5db;border-radius:10px;padding:10px">
+ <b>Diagnostic partajare (temporar)</b>
+ <pre id="shareDebugOutput" style="font-size:12px;max-height:260px;overflow:auto;margin:8px 0 0"></pre>
+ <button class="btn secondary small" style="margin-top:8px" onclick="copyShareDebug()">Copiaza diagnosticul</button>
+ </div>
  <input id="backupFile" type="file" accept=".json,application/json" style="display:none" onchange="importBackup(this)">
  <p class="muted small">Datele raman stocate pe acest dispozitiv. Backup-ul nu sincronizeaza automat alte telefoane.</p></div>`;
 }
@@ -252,19 +257,89 @@ function exportBackup(){
  a.href=url;a.download=file.name;document.body.appendChild(a);a.click();a.remove();
  setTimeout(()=>URL.revokeObjectURL(url),1000);toast('Backup descarcat');
 }
-async function shareBackup(){
- let file;
+function showShareDebug(lines){
+ const panel=document.getElementById('shareDebugPanel');
+ const output=document.getElementById('shareDebugOutput');
+ if(!panel||!output){console.warn('Panoul de diagnostic partajare nu este disponibil.',lines);return;}
+ output.textContent=lines.join('\n');
+ panel.style.display='block';
+}
+async function copyShareDebug(){
+ const output=document.getElementById('shareDebugOutput');
+ if(!output)return;
  try{
+   await navigator.clipboard.writeText(output.textContent);
+   toast('Diagnosticul a fost copiat.');
+ }catch(err){
+   // Clipboard-ul poate fi restrictionat; textul ramane vizibil pentru copiere manuala.
+   toast('Copierea automata nu este permisa. Selecteaza si copiaza textul din diagnostic.');
+ }
+}
+async function shareBackup(){
+ let file=null;
+ let stage='initializare';
+ let canShareResult='neverificat';
+ const diagnostics=[
+   'Diagnostic partajare backup - temporar',
+   'Data/ora: '+new Date().toISOString(),
+   'Browser: '+navigator.userAgent,
+   'Context securizat (isSecureContext): '+String(window.isSecureContext),
+   'navigator.share disponibil: '+String(typeof navigator.share==='function'),
+   'navigator.canShare disponibil: '+String(typeof navigator.canShare==='function'),
+   'Vizibilitate document: '+String(document.visibilityState)
+ ];
+ try{
+   stage='generare fisier';
    file=createBackupFile();
-   if(!navigator.share||!navigator.canShare||!navigator.canShare({files:[file]})){
-     toast('Partajarea fisierelor nu este suportata de acest browser. Foloseste Descarca backup.');
+   diagnostics.push('Nume fisier: '+file.name);
+   diagnostics.push('Tip MIME: '+String(file.type));
+   diagnostics.push('Dimensiune (bytes): '+String(file.size));
+   diagnostics.push('Ultima modificare (timestamp): '+String(file.lastModified));
+   stage='verificare suport partajare fisier';
+   if(typeof navigator.share!=='function'){
+     canShareResult='nu - navigator.share indisponibil';
+     diagnostics.push('canShare pentru fisier: '+canShareResult);
+     diagnostics.push('Rezultat: SUPORT API INDISPONIBIL');
+     showShareDebug(diagnostics);
+     toast('Partajarea nu este suportata de acest browser. Diagnosticul este afisat mai jos.');
      return;
    }
+   if(typeof navigator.canShare!=='function'){
+     canShareResult='nu - navigator.canShare indisponibil';
+     diagnostics.push('canShare pentru fisier: '+canShareResult);
+     diagnostics.push('Rezultat: API DE VALIDARE INDISPONIBIL');
+     showShareDebug(diagnostics);
+     toast('Browserul nu poate valida partajarea fisierului. Vezi diagnosticul.');
+     return;
+   }
+   canShareResult=String(navigator.canShare({files:[file]}));
+   diagnostics.push('canShare({files:[file]}): '+canShareResult);
+   if(canShareResult!=='true'){
+     diagnostics.push('Rezultat: FISIERUL NU ESTE ACCEPTAT PENTRU PARTAJARE');
+     showShareDebug(diagnostics);
+     toast('Browserul nu accepta partajarea acestui fisier. Vezi diagnosticul.');
+     return;
+   }
+   stage='apel navigator.share';
+   diagnostics.push('Date transmise: files + title + text');
    await navigator.share({files:[file],title:'Backup Mayer Distribution',text:'Backup Mayer Distribution - '+today()});
+   diagnostics.push('Rezultat: navigator.share s-a incheiat fara eroare.');
+   showShareDebug(diagnostics);
+   toast('Partajarea a fost lansata.');
  }catch(err){
-   if(err&&err.name==='AbortError') return;
+   diagnostics.push('Etapa: '+stage);
+   diagnostics.push('canShare rezultat: '+canShareResult);
+   diagnostics.push('Rezultat: EROARE');
+   diagnostics.push('Eroare name: '+String(err&&err.name||'(necunoscut)'));
+   diagnostics.push('Eroare message: '+String(err&&err.message||'(fara mesaj)'));
+   if(err&&err.code!==undefined) diagnostics.push('Eroare code: '+String(err.code));
+   showShareDebug(diagnostics);
+   if(err&&err.name==='AbortError'){
+     toast('Partajarea a fost anulata sau inchisa. Diagnosticul este afisat mai jos.');
+     return;
+   }
    console.error('Partajarea backup-ului a esuat:',err);
-   toast('Partajarea nu a reusit. Poti folosi Descarca backup.');
+   toast('Partajarea nu a reusit. Diagnosticul este afisat mai jos.');
  }
 }
 async function importBackup(input){
