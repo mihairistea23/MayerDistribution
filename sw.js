@@ -1,4 +1,4 @@
-const CACHE_NAME='mayer-distribution-v1.10';
+const CACHE_NAME='mayer-distribution-v1.11';
 const APP_FILES=[
  './','./index.html','./manifest.json','./favicon.ico',
  './icons/icon-192.png','./icons/icon-512.png',
