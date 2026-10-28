@@ -45,7 +45,7 @@ pre{white-space:pre-wrap;background:#f9fafb;border-radius:12px;padding:14px;font
 <div id="toast" class="toast"></div>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 <script>
-const APP_VERSION = "v1.6";
+const APP_VERSION = "v1.7";
 document.getElementById("appVersion").textContent = APP_VERSION;
 const initialData = {
   "Driver": [],
@@ -224,6 +224,7 @@ function renderSettings(){
  document.getElementById('app').innerHTML=`<div class="card"><h2>Setari / Nomenclatoare</h2>${groups.map(([k,n])=>`<div class="item"><b>${n}</b><div class="muted">${lists[k].length} valori</div><button class="btn secondary" style="margin-top:7px" onclick="editList('${k}','${n}')">Administreaza</button></div>`).join('')}</div>
  <div class="card"><h2>Backup si restaurare</h2><p class="muted">Backup-ul contine nomenclatoarele si istoricul programelor. Pastreaza fisierul intr-un loc sigur.</p>
  <button class="btn secondary" style="width:100%;margin-top:6px" onclick="exportBackup()">Descarca backup</button>
+ <button class="btn secondary" style="width:100%;margin-top:8px" onclick="shareBackup()">Partajare</button>
  <button class="btn secondary" style="width:100%;margin-top:8px" onclick="document.getElementById('backupFile').click()">Restaureaza din backup</button>
  <input id="backupFile" type="file" accept=".json,application/json" style="display:none" onchange="importBackup(this)">
  <p class="muted small">Datele raman stocate pe acest dispozitiv. Backup-ul nu sincronizeaza automat alte telefoane.</p></div>`;
@@ -240,12 +241,31 @@ function saveList(k){let arr=[];for(let i=0;i<lists[k].length;i++){let v=documen
 function addItem(k){lists[k].push('');editList(k,document.querySelector('#modalSheet h2').textContent)}
 function delItem(k,i){lists[k].splice(i,1);editList(k,document.querySelector('#modalSheet h2').textContent)}
 function closeModal(){const modal=document.getElementById('modal');if(!modal.classList.contains('show'))return;modal.classList.remove('show');document.body.classList.remove('modal-open');document.body.style.position='';document.body.style.top='';document.body.style.width='';window.scrollTo(0,window._mayerScrollY||0);}
-function exportBackup(){
+function createBackupFile(){
  const payload={format:'ProgramTransportBackup',version:1,exportedAt:new Date().toISOString(),lists,programs};
  const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
- const url=URL.createObjectURL(blob),a=document.createElement('a');
- a.href=url;a.download=`MayerDistribution-backup-${today()}.json`;document.body.appendChild(a);a.click();a.remove();
+ return new File([blob],`MayerDistribution-backup-${today()}.json`,{type:'application/json',lastModified:Date.now()});
+}
+function exportBackup(){
+ const file=createBackupFile();
+ const url=URL.createObjectURL(file),a=document.createElement('a');
+ a.href=url;a.download=file.name;document.body.appendChild(a);a.click();a.remove();
  setTimeout(()=>URL.revokeObjectURL(url),1000);toast('Backup descarcat');
+}
+async function shareBackup(){
+ let file;
+ try{
+   file=createBackupFile();
+   if(!navigator.share||!navigator.canShare||!navigator.canShare({files:[file]})){
+     toast('Partajarea fisierelor nu este suportata de acest browser. Foloseste Descarca backup.');
+     return;
+   }
+   await navigator.share({files:[file],title:'Backup Mayer Distribution',text:'Backup Mayer Distribution - '+today()});
+ }catch(err){
+   if(err&&err.name==='AbortError') return;
+   console.error('Partajarea backup-ului a esuat:',err);
+   toast('Partajarea nu a reusit. Poti folosi Descarca backup.');
+ }
 }
 async function importBackup(input){
  const file=input.files&&input.files[0]; if(!file)return;
