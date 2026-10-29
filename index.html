@@ -38,11 +38,12 @@ nav button{flex:1;padding:10px 5px;border:0;background:white;border-radius:10px;
 pre{white-space:pre-wrap;background:#f9fafb;border-radius:12px;padding:14px;font-size:15px;line-height:1.45;border:1px solid #e5e7eb}
 .item{padding:12px 0;border-bottom:1px solid #eee}.item:last-child{border-bottom:0}.muted{color:#6b7280}
 .modal{position:fixed;inset:0;background:#0008;z-index:20;display:none;align-items:flex-end;overscroll-behavior:contain}.modal.show{display:flex}.sheet{background:white;width:100%;max-height:90vh;max-height:90dvh;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y;border-radius:20px 20px 0 0;padding:18px;min-height:0}.sheet-head{display:flex;justify-content:space-between;align-items:center;gap:12px;position:sticky;top:-18px;margin:-18px -18px 12px;padding:14px 18px;background:white;border-bottom:1px solid #e5e7eb;z-index:2}.sheet-head h2{margin:0}.back-btn{padding:8px 11px;font-size:13px;white-space:nowrap}body.modal-open{overflow:hidden}
+.preview-actions{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:10px}.copy-btn{width:48px;height:48px;flex:0 0 48px;display:inline-flex;align-items:center;justify-content:center;padding:0;background:#e5e7eb;color:#111827;border:1px solid #d1d5db}.copy-btn svg{width:22px;height:22px;display:block}.copy-btn:focus-visible{outline:2px solid #111827;outline-offset:2px}@media(max-width:360px){.preview-actions .secondary{padding:12px 10px;font-size:14px}}
 .toast{position:fixed;bottom:75px;left:50%;transform:translateX(-50%);background:#111827;color:white;padding:10px 14px;border-radius:10px;display:none;z-index:30;max-width:calc(100% - 24px);width:max-content;text-align:center;line-height:1.35;white-space:normal}
 </style>
 </head>
 <body>
-<header><div class="header-inner"><div class="header-copy"><h1>MayerCargo SRL</h1><div class="sub">Management Transport by Mihai R. | <span id="appVersion">v1.8</span></div></div><button type="button" id="refreshAppBtn" class="refresh-btn" aria-label="Verifica actualizarile si reincarca aplicatia" title="Verifica actualizarile si reincarca aplicatia" onclick="refreshApplication()"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M17.6 6.4A8 8 0 0 0 4 12v2" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M1.5 11.5 4 14l2.5-2.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M6.4 17.6A8 8 0 0 0 20 12v-2" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M17.5 12.5 20 10l2.5 2.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div></header>
+<header><div class="header-inner"><div class="header-copy"><h1>MayerCargo SRL</h1><div class="sub">Management Transport by Mihai R. | <span id="appVersion">v1.9</span></div></div><button type="button" id="refreshAppBtn" class="refresh-btn" aria-label="Verifica actualizarile si reincarca aplicatia" title="Verifica actualizarile si reincarca aplicatia" onclick="refreshApplication()"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M17.6 6.4A8 8 0 0 0 4 12v2" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M1.5 11.5 4 14l2.5-2.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M6.4 17.6A8 8 0 0 0 20 12v-2" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M17.5 12.5 20 10l2.5 2.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div></header>
 <main id="app"></main>
 <nav>
 <button onclick="show('new')" id="n-new">Program nou</button>
@@ -54,7 +55,7 @@ pre{white-space:pre-wrap;background:#f9fafb;border-radius:12px;padding:14px;font
 <div id="toast" class="toast"></div>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 <script>
-const APP_VERSION = "v1.8";
+const APP_VERSION = "v1.9";
 document.getElementById("appVersion").textContent = APP_VERSION;
 const initialData = {
   "Driver": [],
@@ -177,9 +178,30 @@ function preview(){
  if(error){toast(error);return}
  const msg=buildMessage(current);
  document.getElementById('app').innerHTML=`<div class="card"><h2>Previzualizare</h2><pre>${esc(msg)}</pre>
- <button class="btn secondary" onclick="renderNew()">Inapoi si modifica</button>
+ <div class="preview-actions"><button class="btn secondary" onclick="renderNew()">Inapoi si modifica</button>
+ <button type="button" class="btn copy-btn" onclick="copyPreviewText()" aria-label="Copiaza textul programului" title="Copiaza textul programului"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="8" y="7" width="13" height="15" rx="2" stroke="currentColor" stroke-width="2"/><path d="M16 7V4a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button></div>
  <button class="btn primary" onclick="saveAndWhatsApp()">Trimite pe WhatsApp</button></div>`;
 }
+async function copyPreviewText(){
+ if(!current){toast('Nu exista un program de copiat.');return}
+ const textToCopy=buildMessage(current);
+ try{
+  if(navigator.clipboard&&typeof navigator.clipboard.writeText==='function'){
+   await navigator.clipboard.writeText(textToCopy);
+  }else{
+   const area=document.createElement('textarea');
+   area.value=textToCopy;
+   area.setAttribute('readonly','');
+   area.style.position='fixed';area.style.opacity='0';area.style.pointerEvents='none';
+   document.body.appendChild(area);area.select();area.setSelectionRange(0,area.value.length);
+   const copied=document.execCommand('copy');
+   area.remove();
+   if(!copied)throw new Error('Clipboard unavailable');
+  }
+  toast('Textul programului a fost copiat in clipboard.');
+ }catch(error){
+  toast('Copierea nu a reusit. Verifica permisiunile browserului si incearca din nou.');
+ }}
 function saveAndWhatsApp(){
  const p=JSON.parse(JSON.stringify(current)); p.id=Date.now(); programs.unshift(p);
  if(!save()){programs.shift();return}
