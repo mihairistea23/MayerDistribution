@@ -255,7 +255,9 @@ function delItem(k,i){
  const value=lists[k][i];
  if(value===undefined)return;
  const heading=document.querySelector('#modalSheet .sheet-head h2')?.textContent||'nomenclator';
- if(!confirm('Esti sigur ca doresti sa stergi '+heading.toLowerCase().replace(/s$/,'')+' „'+value+'”? Modificarea va fi aplicata dupa apasarea butonului „Salveaza”.'))return;
+ const keyLabels={Driver:'soferul',Auto:'autovehiculul',Remorca:'remorca',Destination:'destinatia',Transit:'locatia de transit',Ridicare:'locatia de ridicare'};
+ const itemType=keyLabels[k]||'elementul din nomenclator';
+ if(!confirm('Esti sigur ca doresti sa stergi '+itemType+' „'+value+'”? Modificarea va fi aplicata dupa apasarea butonului „Salveaza”.'))return;
  lists[k].splice(i,1);
  editList(k,heading);
 }
