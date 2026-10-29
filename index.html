@@ -251,7 +251,14 @@ function editList(k,n){
 }
 function saveList(k){let arr=[];for(let i=0;i<lists[k].length;i++){let v=document.getElementById('li-'+i).value.trim();if(v&&!arr.includes(v))arr.push(v)}const previous=lists[k];lists[k]=arr;if(!save()){lists[k]=previous;return}closeModal();renderSettings();toast('Lista salvata')}
 function addItem(k){lists[k].push('');editList(k,document.querySelector('#modalSheet h2').textContent)}
-function delItem(k,i){lists[k].splice(i,1);editList(k,document.querySelector('#modalSheet h2').textContent)}
+function delItem(k,i){
+ const value=lists[k][i];
+ if(value===undefined)return;
+ const heading=document.querySelector('#modalSheet .sheet-head h2')?.textContent||'nomenclator';
+ if(!confirm('Esti sigur ca doresti sa stergi '+heading.toLowerCase().replace(/s$/,'')+' „'+value+'”? Modificarea va fi aplicata dupa apasarea butonului „Salveaza”.'))return;
+ lists[k].splice(i,1);
+ editList(k,heading);
+}
 function closeModal(){const modal=document.getElementById('modal');if(!modal.classList.contains('show'))return;modal.classList.remove('show');document.body.classList.remove('modal-open');document.body.style.position='';document.body.style.top='';document.body.style.width='';window.scrollTo(0,window._mayerScrollY||0);}
 function createBackupFile(){
  const payload={format:'ProgramTransportBackup',version:1,exportedAt:new Date().toISOString(),lists,programs};
